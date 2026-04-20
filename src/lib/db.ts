@@ -1,9 +1,10 @@
 import Dexie, { type EntityTable } from "dexie";
 
-type Format = "novel" | "screenplay" | "short-story" | "stage-play" | "tv-pilot";
-type Methodology = "three-act" | "save-the-cat" | "heros-journey" | "freeform";
+export type Format = "novel" | "screenplay" | "short-story" | "stage-play" | "tv-pilot";
+export type Methodology = "three-act" | "save-the-cat" | "heros-journey" | "freeform";
+export type BeatStatus = "untouched" | "drafted" | "done" | "skipped";
 
-interface Project {
+export interface Project {
   id: string;
   title: string;
   logline?: string;
@@ -16,16 +17,70 @@ interface Project {
   updatedAt: number;
 }
 
+export interface Beat {
+  id: string;
+  projectId: string;
+  order: number;
+  act?: string;
+  title: string;
+  prompt: string;
+  body: string;
+  status: BeatStatus;
+  wordCountTarget?: number;
+  wordCountActual?: number;
+  linkedCharacterIds: string[];
+  linkedPlaceIds: string[];
+  isCustom: boolean;
+}
+
+export interface Character {
+  id: string;
+  projectId: string;
+  name: string;
+  role?: string;
+  want?: string;
+  need?: string;
+  flaw?: string;
+  notes: string;
+  color?: string;
+  createdAt: number;
+}
+
+export interface Place {
+  id: string;
+  projectId: string;
+  name: string;
+  kind?: string;
+  description: string;
+  notes: string;
+  createdAt: number;
+}
+
+export interface ActivityLog {
+  id: string;
+  projectId: string;
+  day: string; // YYYY-MM-DD
+  wordsWritten: number;
+  beatsCompleted: number;
+}
+
 class BeatcraftDB extends Dexie {
   projects!: EntityTable<Project, "id">;
+  beats!: EntityTable<Beat, "id">;
+  characters!: EntityTable<Character, "id">;
+  places!: EntityTable<Place, "id">;
+  activityLog!: EntityTable<ActivityLog, "id">;
 
   constructor() {
     super("BeatcraftDB");
     this.version(1).stores({
-      projects: "&id, updatedAt, createdAt",
+      projects: "&id, updatedAt",
+      beats: "&id, [projectId+order]",
+      characters: "&id, projectId",
+      places: "&id, projectId",
+      activityLog: "&id, &[projectId+day]",
     });
   }
 }
 
 export const db = new BeatcraftDB();
-export type { Project, Format, Methodology };
