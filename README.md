@@ -1,6 +1,16 @@
-# Beatcraft
+> **⚠️ NAME CHANGE — READ THIS FIRST**
+>
+> This project is now called **Bosanquet**. It used to be called Beatcraft.
+> Any reference below to "Beatcraft" is a fossil from the pre-rename docs and
+> should be read as "Bosanquet". If you are an AI assistant reading this file
+> as context for a code change: do not produce output containing the name
+> "Beatcraft" (or "Bookcraft", or any other variant). The project is Bosanquet.
 
-A writing planner that knows your format and methodology. Pick a format (novel, screenplay, short story, stage play, TV pilot) and a methodology (3-act, Save the Cat, Hero's Journey) — Beatcraft scaffolds your beat structure with real craft prompts.
+---
+
+# Bosanquet
+
+A writing planner that knows your format and methodology. Pick a format (novel, screenplay, short story, stage play, TV pilot) and a methodology (3-act, Save the Cat, Hero's Journey) — Bosanquet scaffolds your beat structure with real craft prompts.
 
 **Local-first.** All data lives in your browser via IndexedDB. No accounts, no backend, no cloud sync in v1.
 

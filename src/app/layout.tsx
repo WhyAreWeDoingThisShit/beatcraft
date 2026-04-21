@@ -27,13 +27,13 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Beatcraft",
+  title: "Bosanquet",
   description: "A writing planner that knows your format and methodology.",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Beatcraft",
+    title: "Bosanquet",
   },
   icons: {
     apple: "/apple-touch-icon.png",

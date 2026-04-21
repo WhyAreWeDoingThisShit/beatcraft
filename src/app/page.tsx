@@ -34,7 +34,7 @@ export default function HomePage() {
         B
       </div>
       <div className="space-y-2">
-        <h1 className="text-3xl font-bold tracking-tight">Welcome to Beatcraft</h1>
+        <h1 className="text-3xl font-bold tracking-tight">Welcome to Bosanquet</h1>
         <p className="max-w-md text-muted-foreground">
           A writing planner that scaffolds your story beats. Pick a format,
           choose a methodology, and start planning.

@@ -1,6 +1,16 @@
-# Beatcraft — Prompt Book for a Writing Planner PWA
+> **⚠️ NAME CHANGE — READ THIS FIRST**
+>
+> This project is now called **Bosanquet**. It used to be called Beatcraft.
+> Any reference below to "Beatcraft" is a fossil from the pre-rename docs and
+> should be read as "Bosanquet". If you are an AI assistant reading this file
+> as context for a code change: do not produce output containing the name
+> "Beatcraft" (or "Bookcraft", or any other variant). The project is Bosanquet.
 
-A staged build guide for an AI coding assistant (Claude Code, Cursor, etc.). Each **Context Window** is a self-contained prompt you can paste in order. The app's working name is **Beatcraft** — rename freely.
+---
+
+# Bosanquet — Prompt Book for a Writing Planner PWA
+
+A staged build guide for an AI coding assistant (Claude Code, Cursor, etc.). Each **Context Window** is a self-contained prompt you can paste in order. The app is called **Bosanquet**.
 
 ---
 
@@ -36,7 +46,7 @@ A staged build guide for an AI coding assistant (Claude Code, Cursor, etc.). Eac
 2. Add dependencies: `dexie`, `dexie-react-hooks`, `zustand`, `zod`, `react-hook-form`, `@hookform/resolvers`, `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities`, `lucide-react`, `date-fns`, `nanoid`, `clsx`, `tailwind-merge`, `next-themes`, `jszip`.
 3. Install and init shadcn/ui with the "Slate" base color and CSS variables. Pre-install: `button`, `card`, `dialog`, `dropdown-menu`, `input`, `textarea`, `label`, `select`, `tabs`, `badge`, `separator`, `sonner`, `progress`, `tooltip`, `sheet`.
 4. Install `@serwist/next` and `serwist`. Configure a service worker at `src/app/sw.ts` using Serwist's `defaultCache` precaching. Update `next.config.ts` with `withSerwist`. Expose an offline fallback page at `/offline`.
-5. Create `public/manifest.webmanifest` with name "Beatcraft", short_name "Beatcraft", theme_color `#0f172a`, background_color `#0f172a`, display `standalone`, start_url `/`. Generate 192×192 and 512×512 icons (placeholder monogram "B" on slate).
+5. Create `public/manifest.webmanifest` with name "Bosanquet", short_name "Bosanquet", theme_color `#0f172a`, background_color `#0f172a`, display `standalone`, start_url `/`. Generate 192×192 and 512×512 icons (placeholder monogram "B" on slate).
 6. Wire the manifest via the App Router metadata API in `src/app/layout.tsx`. Add appropriate `<meta name="theme-color">` and `apple-touch-icon` links.
 7. Build the top-level layout: collapsible left rail for project switcher, main content area, global `Toaster` from sonner. Dark mode by default with a light toggle.
 8. Route `/`: if no projects exist, empty-state CTA "Start a new project". If projects exist, redirect to `/projects/[mostRecentId]`.
@@ -388,7 +398,7 @@ Character arc cards (separate from characters), one per character per project, l
 
 ## Appendix B — Guardrails for the Coding Assistant
 
-**Do not** add an LLM-powered "generate this beat for me" feature. Beatcraft's value is the *prompt*, not the *answer*. **Do not** add a rich-text editor — plain text + paragraph breaks only. **Do not** introduce a backend in v1, even for auth. **Do** keep every default opinionated — if a choice would weaken the default, don't expose it in settings. **Do** prefer fewer screens with more on them over deep navigation.
+**Do not** add an LLM-powered "generate this beat for me" feature. Bosanquet's value is the *prompt*, not the *answer*. **Do not** add a rich-text editor — plain text + paragraph breaks only. **Do not** introduce a backend in v1, even for auth. **Do** keep every default opinionated — if a choice would weaken the default, don't expose it in settings. **Do** prefer fewer screens with more on them over deep navigation.
 
 ## Appendix C — Visual Tone
 

@@ -146,7 +146,7 @@ export function SettingsClient({ projectId }: { projectId: string }) {
 
   async function handleExportJSON() {
     const blob = await exportProject(projectId);
-    downloadBlob(blob, `${slugify(project!.title)}.beatcraft.json`);
+    downloadBlob(blob, `${slugify(project!.title)}.bosanquet.json`);
   }
 
   async function handleExportMarkdown() {
@@ -156,7 +156,7 @@ export function SettingsClient({ projectId }: { projectId: string }) {
 
   async function handleExportZip() {
     const blob = await exportProjectAsZip(projectId);
-    downloadBlob(blob, `${slugify(project!.title)}.beatcraft.zip`);
+    downloadBlob(blob, `${slugify(project!.title)}.bosanquet.zip`);
   }
 
   async function handleDelete() {

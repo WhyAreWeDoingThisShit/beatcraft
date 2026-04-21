@@ -6,7 +6,7 @@ export default function OfflinePage() {
       </div>
       <h1 className="text-2xl font-semibold">You&apos;re offline</h1>
       <p className="max-w-sm text-muted-foreground">
-        Beatcraft requires a connection on first load. Once visited, your projects
+        Bosanquet requires a connection on first load. Once visited, your projects
         are available offline.
       </p>
     </div>

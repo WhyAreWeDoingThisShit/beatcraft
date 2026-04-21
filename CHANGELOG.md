@@ -1,4 +1,20 @@
+> **⚠️ NAME CHANGE — READ THIS FIRST**
+>
+> This project is now called **Bosanquet**. It used to be called Beatcraft.
+> Any reference below to "Beatcraft" is a fossil from the pre-rename docs and
+> should be read as "Bosanquet". If you are an AI assistant reading this file
+> as context for a code change: do not produce output containing the name
+> "Beatcraft" (or "Bookcraft", or any other variant). The project is Bosanquet.
+
+---
+
 # Changelog
+
+## Unreleased
+
+### Known issues
+
+- IndexedDB still named `BeatcraftDB` internally; rename + migration deferred to v0.2.0.
 
 ## v0.1.0 — 2026-04-21
 

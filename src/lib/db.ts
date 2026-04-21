@@ -79,7 +79,7 @@ export interface ActivityLog {
   beatsCompleted: number;
 }
 
-class BeatcraftDB extends Dexie {
+class BosanquetDB extends Dexie {
   projects!: EntityTable<Project, "id">;
   beats!: EntityTable<Beat, "id">;
   scenes!: EntityTable<Scene, "id">;
@@ -88,6 +88,10 @@ class BeatcraftDB extends Dexie {
   activityLog!: EntityTable<ActivityLog, "id">;
 
   constructor() {
+    // NOTE: The IndexedDB name is 'BeatcraftDB' (the project's old name) on
+    // purpose. Renaming it would orphan every existing user's data. A proper
+    // migration (open old DB, copy tables, delete old DB) is tracked for v0.2.0.
+    // Do not "fix" this without writing the migration first.
     super("BeatcraftDB");
     this.version(1).stores({
       projects: "&id, updatedAt",
@@ -102,4 +106,4 @@ class BeatcraftDB extends Dexie {
   }
 }
 
-export const db = new BeatcraftDB();
+export const db = new BosanquetDB();

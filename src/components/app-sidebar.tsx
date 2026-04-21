@@ -126,7 +126,7 @@ export function AppSidebar() {
               <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground text-sm font-serif font-black">
                 B
               </div>
-              <span className="truncate font-semibold text-sidebar-foreground">Beatcraft</span>
+              <span className="truncate font-semibold text-sidebar-foreground">Bosanquet</span>
             </Link>
             <Button
               variant="ghost"
@@ -144,14 +144,14 @@ export function AppSidebar() {
               render={
                 <Link
                   href="/"
-                  aria-label="Beatcraft — go home"
+                  aria-label="Bosanquet — go home"
                   className="mx-auto flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground text-sm font-serif font-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   B
                 </Link>
               }
             />
-            <TooltipContent side="right">Beatcraft</TooltipContent>
+            <TooltipContent side="right">Bosanquet</TooltipContent>
           </Tooltip>
         )}
       </div>

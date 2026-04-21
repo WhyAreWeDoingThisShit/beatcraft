@@ -38,7 +38,7 @@ export default function SettingsPage() {
       toast.success("Project imported.");
       router.push(`/projects/${id}`);
     } catch {
-      toast.error("Could not import file. Make sure it's a valid Beatcraft JSON export.");
+      toast.error("Could not import file. Make sure it's a valid Bosanquet JSON export.");
     } finally {
       setImporting(false);
     }
@@ -96,7 +96,7 @@ export default function SettingsPage() {
 
         <div>
           <p className="text-sm text-muted-foreground mb-3">
-            Import a project from a Beatcraft JSON export file.
+            Import a project from a Bosanquet JSON export file.
           </p>
           <Button
             variant="outline"
@@ -135,7 +135,7 @@ export default function SettingsPage() {
           <div className="flex items-center justify-between">
             <span className="text-muted-foreground">Source</span>
             <a
-              href="https://github.com/WhyAreWeDoingThisShit/beatcraft"
+              href="https://github.com/WhyAreWeDoingThisShit/bosanquet"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1.5 text-foreground hover:underline"
