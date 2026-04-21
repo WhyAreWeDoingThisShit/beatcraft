@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import dynamic from "next/dynamic";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   DndContext,
   closestCenter,
@@ -40,16 +40,13 @@ import {
 import {
   addCustomBeat,
   detachFromMethodology,
+  getSceneCount,
+  listBeats,
   reorderBeat,
   resetBeatsToScaffold,
 } from "@/lib/db-helpers";
 import type { Beat, Character, Place } from "@/lib/db";
 import { SortableBeatCard } from "./beat-card";
-
-const BeatDrawer = dynamic(
-  () => import("./beat-drawer").then((m) => ({ default: m.BeatDrawer })),
-  { ssr: false },
-);
 
 const METHODOLOGY_LABEL: Record<string, string> = {
   "three-act": "3-Act Structure",
@@ -67,6 +64,7 @@ function ActGroup({
   beats,
   characters,
   places,
+  projectId,
   collapsed,
   onToggle,
   onOpenBeat,
@@ -76,6 +74,7 @@ function ActGroup({
   beats: Beat[];
   characters: Character[];
   places: Place[];
+  projectId: string;
   collapsed: boolean;
   onToggle: () => void;
   onOpenBeat: (beat: Beat) => void;
@@ -123,6 +122,7 @@ function ActGroup({
               beat={beat}
               characters={characters}
               places={places}
+              projectId={projectId}
               onOpen={() => onOpenBeat(beat)}
             />
           ))}
@@ -152,11 +152,21 @@ function ResetDialog({
   open,
   onOpenChange,
   onConfirm,
+  counts,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   onConfirm: (mode: "discard" | "keep") => void;
+  counts: { discard: { beatCount: number; sceneCount: number } | null; keep: { beatCount: number; sceneCount: number } | null };
 }) {
+  function countLabel(c: { beatCount: number; sceneCount: number } | null) {
+    if (!c) return "";
+    const parts: string[] = [];
+    if (c.beatCount > 0) parts.push(`${c.beatCount} beat${c.beatCount !== 1 ? "s" : ""}`);
+    if (c.sceneCount > 0) parts.push(`${c.sceneCount} scene${c.sceneCount !== 1 ? "s" : ""}`);
+    return parts.length > 0 ? ` (${parts.join(" and ")})` : "";
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent showCloseButton={false}>
@@ -168,10 +178,10 @@ function ResetDialog({
         </p>
         <DialogFooter className="flex-col gap-2 sm:flex-col">
           <Button variant="destructive" onClick={() => onConfirm("discard")}>
-            Discard everything &amp; reset
+            Discard everything &amp; reset{countLabel(counts.discard)}
           </Button>
           <Button variant="outline" onClick={() => onConfirm("keep")}>
-            Keep custom beats, reset scaffold
+            Keep custom beats, reset scaffold{countLabel(counts.keep)}
           </Button>
           <DialogClose render={<Button variant="ghost" />}>Cancel</DialogClose>
         </DialogFooter>
@@ -216,15 +226,19 @@ function DetachDialog({
 // ---------------------------------------------------------------------------
 
 export function BeatBoard({ projectId }: { projectId: string }) {
+  const router = useRouter();
   const project = useLiveProject(projectId);
   const beats = useLiveBeats(projectId);
   const characters = useLiveCharacters(projectId);
   const places = useLivePlaces(projectId);
 
-  const [openBeat, setOpenBeat] = useState<Beat | null>(null);
   const [collapsedActs, setCollapsedActs] = useState<Set<string>>(new Set());
   const [showReset, setShowReset] = useState(false);
   const [showDetach, setShowDetach] = useState(false);
+  const [resetCounts, setResetCounts] = useState<{
+    discard: { beatCount: number; sceneCount: number } | null;
+    keep: { beatCount: number; sceneCount: number } | null;
+  }>({ discard: null, keep: null });
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -297,6 +311,33 @@ export function BeatBoard({ projectId }: { projectId: string }) {
     reorderBeat(item.id, newOrder);
   }
 
+  async function computeResetCounts() {
+    const existing = await listBeats(projectId);
+    const nonCustom = existing.filter((b) => !b.isCustom);
+    const all = existing;
+
+    async function sumScenes(list: Beat[]) {
+      let count = 0;
+      for (const b of list) count += await getSceneCount(b.id);
+      return count;
+    }
+
+    const [discardScenes, keepScenes] = await Promise.all([
+      sumScenes(all),
+      sumScenes(nonCustom),
+    ]);
+
+    setResetCounts({
+      discard: { beatCount: all.length, sceneCount: discardScenes },
+      keep: { beatCount: nonCustom.length, sceneCount: keepScenes },
+    });
+  }
+
+  async function handleOpenReset() {
+    setShowReset(true);
+    await computeResetCounts();
+  }
+
   async function handleReset(mode: "discard" | "keep") {
     if (!project) return;
     setShowReset(false);
@@ -312,11 +353,12 @@ export function BeatBoard({ projectId }: { projectId: string }) {
 
   async function handleAddBeat(act: string | undefined) {
     const id = await addCustomBeat(projectId, act);
-    const newBeat = beats.find((b) => b.id === id);
-    if (newBeat) setOpenBeat(newBeat);
+    router.push(`/projects/${projectId}/beats/${id}`);
   }
 
-  const liveBeat = openBeat ? (beats.find((b) => b.id === openBeat.id) ?? null) : null;
+  function handleOpenBeat(beat: Beat) {
+    router.push(`/projects/${projectId}/beats/${beat.id}`);
+  }
 
   return (
     <div className="flex min-h-full flex-col">
@@ -354,7 +396,7 @@ export function BeatBoard({ projectId }: { projectId: string }) {
           <DropdownMenuContent align="end">
             {!isFreeform && (
               <>
-                <DropdownMenuItem onClick={() => setShowReset(true)}>
+                <DropdownMenuItem onClick={handleOpenReset}>
                   Reset to scaffold…
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setShowDetach(true)}>
@@ -400,7 +442,8 @@ export function BeatBoard({ projectId }: { projectId: string }) {
                         beat={beat}
                         characters={characters}
                         places={places}
-                        onOpen={() => setOpenBeat(beat)}
+                        projectId={projectId}
+                        onOpen={() => handleOpenBeat(beat)}
                       />
                     ))}
                     <button
@@ -424,9 +467,10 @@ export function BeatBoard({ projectId }: { projectId: string }) {
                     beats={g.beats}
                     characters={characters}
                     places={places}
+                    projectId={projectId}
                     collapsed={collapsedActs.has(g.act)}
                     onToggle={() => toggleAct(g.act)}
-                    onOpenBeat={setOpenBeat}
+                    onOpenBeat={handleOpenBeat}
                     onAddBeat={() => handleAddBeat(g.act === "Beats" ? undefined : g.act)}
                   />
                 ))}
@@ -444,17 +488,11 @@ export function BeatBoard({ projectId }: { projectId: string }) {
         </DndContext>
       </div>
 
-      <BeatDrawer
-        beat={liveBeat}
-        characters={characters}
-        places={places}
-        onClose={() => setOpenBeat(null)}
-      />
-
       <ResetDialog
         open={showReset}
         onOpenChange={setShowReset}
         onConfirm={handleReset}
+        counts={resetCounts}
       />
 
       <DetachDialog

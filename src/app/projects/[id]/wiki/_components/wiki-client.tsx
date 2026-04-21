@@ -5,8 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Plus, Search } from "lucide-react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { useLiveBeats, useLiveCharacters, useLivePlaces } from "@/lib/use-live";
-import type { Character, Place } from "@/lib/db";
+import { useLiveBeats, useLiveCharacters, useLivePlaces, useLiveProjectScenes } from "@/lib/use-live";
+import type { Character, Place, Scene } from "@/lib/db";
 import {
   CharacterDrawer,
   CHARACTER_COLORS,
@@ -74,6 +74,7 @@ function PlaceCard({
 export function WikiClient({ projectId }: { projectId: string }) {
   const router = useRouter();
   const beats = useLiveBeats(projectId);
+  const scenes = useLiveProjectScenes(projectId);
   const characters = useLiveCharacters(projectId);
   const places = useLivePlaces(projectId);
 
@@ -113,17 +114,22 @@ export function WikiClient({ projectId }: { projectId: string }) {
   );
 
   function handleJumpToBeat(beatId: string) {
-    router.push(`/projects/${projectId}#beat-${beatId}`);
+    router.push(`/projects/${projectId}/beats/${beatId}`);
   }
 
-  function linkedBeatsFor(
-    entity: Character | Place,
-    type: "character" | "place",
-  ) {
+  function linkedBeatsFor(entity: Character | Place, type: "character" | "place") {
     return beats.filter((b) =>
       type === "character"
         ? b.linkedCharacterIds.includes(entity.id)
         : b.linkedPlaceIds.includes(entity.id),
+    );
+  }
+
+  function linkedScenesFor(entity: Character | Place, type: "character" | "place"): Scene[] {
+    return scenes.filter((s) =>
+      type === "character"
+        ? s.linkedCharacterIds.includes(entity.id)
+        : s.linkedPlaceIds.includes(entity.id),
     );
   }
 
@@ -261,6 +267,11 @@ export function WikiClient({ projectId }: { projectId: string }) {
             ? linkedBeatsFor(openChar, "character")
             : []
         }
+        linkedScenes={
+          openChar && openChar !== "new"
+            ? linkedScenesFor(openChar, "character")
+            : []
+        }
         onClose={() => setOpenChar(null)}
         onJumpToBeat={handleJumpToBeat}
       />
@@ -271,6 +282,11 @@ export function WikiClient({ projectId }: { projectId: string }) {
         linkedBeats={
           openPlace && openPlace !== "new"
             ? linkedBeatsFor(openPlace, "place")
+            : []
+        }
+        linkedScenes={
+          openPlace && openPlace !== "new"
+            ? linkedScenesFor(openPlace, "place")
             : []
         }
         onClose={() => setOpenPlace(null)}

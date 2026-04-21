@@ -1,29 +1,31 @@
 import Dexie from "dexie";
 import { nanoid } from "nanoid";
 import { db } from "./db";
-import type { Beat, Character, Place, Project } from "./db";
+import type { Beat, Character, Place, Project, Scene } from "./db";
 
 export interface ExportBundle {
-  version: 1;
+  version: 2;
   exportedAt: number;
   project: Project;
   beats: Beat[];
+  scenes: Scene[];
   characters: Character[];
   places: Place[];
 }
 
 async function fetchBundle(projectId: string): Promise<ExportBundle> {
-  const [project, beats, characters, places] = await Promise.all([
+  const [project, beats, scenes, characters, places] = await Promise.all([
     db.projects.get(projectId),
     db.beats
       .where("[projectId+order]")
       .between([projectId, Dexie.minKey], [projectId, Dexie.maxKey], true, true)
       .toArray(),
+    db.scenes.where("projectId").equals(projectId).toArray(),
     db.characters.where("projectId").equals(projectId).toArray(),
     db.places.where("projectId").equals(projectId).toArray(),
   ]);
   if (!project) throw new Error(`Project ${projectId} not found`);
-  return { version: 1, exportedAt: Date.now(), project, beats, characters, places };
+  return { version: 2, exportedAt: Date.now(), project, beats, scenes, characters, places };
 }
 
 export async function exportProject(projectId: string): Promise<Blob> {
@@ -32,7 +34,7 @@ export async function exportProject(projectId: string): Promise<Blob> {
 }
 
 export async function exportProjectAsMarkdown(projectId: string): Promise<Blob> {
-  const { project, beats, characters, places } = await fetchBundle(projectId);
+  const { project, beats, scenes, characters, places } = await fetchBundle(projectId);
 
   const lines: string[] = [];
   lines.push(`# ${project.title}`);
@@ -48,12 +50,44 @@ export async function exportProjectAsMarkdown(projectId: string): Promise<Blob> 
     actGroups.get(act)!.push(beat);
   }
 
+  const scenesByBeat = new Map<string, Scene[]>();
+  for (const scene of scenes) {
+    if (!scenesByBeat.has(scene.beatId)) scenesByBeat.set(scene.beatId, []);
+    scenesByBeat.get(scene.beatId)!.push(scene);
+  }
+
+  const charMap = new Map(characters.map((c) => [c.id, c]));
+  const placeMap = new Map(places.map((p) => [p.id, p]));
+
   for (const [act, actBeats] of actGroups) {
     lines.push(`## ${act}`, "");
     for (const beat of actBeats) {
       lines.push(`### ${beat.title}`);
       if (beat.prompt) lines.push("", `> ${beat.prompt}`);
       if (beat.body) lines.push("", beat.body);
+
+      const beatScenes = scenesByBeat.get(beat.id) ?? [];
+      for (const scene of beatScenes) {
+        lines.push("", `#### ${scene.title}`);
+
+        const castNames = scene.linkedCharacterIds
+          .map((id) => charMap.get(id)?.name)
+          .filter(Boolean)
+          .join(", ");
+        const settingNames = scene.linkedPlaceIds
+          .map((id) => placeMap.get(id)?.name)
+          .filter(Boolean)
+          .join(", ");
+        if (castNames || settingNames) {
+          const parts: string[] = [];
+          if (castNames) parts.push(`Cast: ${castNames}`);
+          if (settingNames) parts.push(`Setting: ${settingNames}`);
+          lines.push("", parts.join(" · "));
+        }
+
+        if (scene.body) lines.push("", scene.body);
+      }
+
       lines.push("");
     }
   }
@@ -104,7 +138,7 @@ export async function exportProjectAsZip(projectId: string): Promise<Blob> {
 /** Imports a project from a JSON file, regenerating all ids to avoid collisions. */
 export async function importProject(file: File): Promise<string> {
   const text = await file.text();
-  const bundle = JSON.parse(text) as ExportBundle;
+  const bundle = JSON.parse(text) as ExportBundle & { version?: number };
 
   const idMap = new Map<string, string>();
   const remap = (oldId: string) => {
@@ -142,12 +176,26 @@ export async function importProject(file: File): Promise<string> {
     linkedPlaceIds: b.linkedPlaceIds.map(remap),
   }));
 
-  await db.transaction("rw", [db.projects, db.beats, db.characters, db.places], async () => {
-    await db.projects.add(project);
-    if (characters.length) await db.characters.bulkAdd(characters);
-    if (places.length) await db.places.bulkAdd(places);
-    if (beats.length) await db.beats.bulkAdd(beats);
-  });
+  const rawScenes: Scene[] = (bundle.scenes ?? []).map((s) => ({
+    ...s,
+    id: remap(s.id),
+    beatId: remap(s.beatId),
+    projectId,
+    linkedCharacterIds: s.linkedCharacterIds.map(remap),
+    linkedPlaceIds: s.linkedPlaceIds.map(remap),
+  }));
+
+  await db.transaction(
+    "rw",
+    [db.projects, db.beats, db.scenes, db.characters, db.places],
+    async () => {
+      await db.projects.add(project);
+      if (characters.length) await db.characters.bulkAdd(characters);
+      if (places.length) await db.places.bulkAdd(places);
+      if (beats.length) await db.beats.bulkAdd(beats);
+      if (rawScenes.length) await db.scenes.bulkAdd(rawScenes);
+    },
+  );
 
   return projectId;
 }

@@ -4,7 +4,7 @@ import { useState, useMemo } from "react"
 import Link from "next/link"
 import { ChevronDownIcon, ChevronRightIcon } from "lucide-react"
 import {
-  useLiveBeats,
+  useLiveBeatsWithStatus,
   useLiveProject,
   useLiveActivityLog,
 } from "@/lib/use-live"
@@ -27,7 +27,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import type { ActivityLog, Beat } from "@/lib/db"
+import type { ActivityLog, Beat, BeatStatus } from "@/lib/db"
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -44,7 +44,6 @@ function computeStreaks(
   const todayStr = toLocalDate(new Date())
   const hasToday = (activityByDay.get(todayStr) ?? 0) > 0
 
-  // current streak: count back from today (or yesterday if today not yet logged)
   let current = 0
   const startOffset = hasToday ? 0 : 1
   for (let i = startOffset; ; i++) {
@@ -58,7 +57,6 @@ function computeStreaks(
     }
   }
 
-  // longest streak: walk sorted active days
   const activeDays = Array.from(activityByDay.keys())
     .filter((day) => (activityByDay.get(day) ?? 0) > 0)
     .sort()
@@ -69,7 +67,6 @@ function computeStreaks(
     if (i === 0) {
       streak = 1
     } else {
-      // use noon times to sidestep DST edge cases
       const prev = new Date(activeDays[i - 1] + "T12:00:00")
       const curr = new Date(activeDays[i] + "T12:00:00")
       const diffDays = Math.round(
@@ -100,14 +97,18 @@ const STATUS_CONFIG = {
   skipped: { label: "Skipped", bar: "bg-slate-400/50 dark:bg-slate-500/50" },
 } as const
 
-function StructuralProgressBar({ beats }: { beats: Beat[] }) {
-  const total = beats.length
+function StructuralProgressBar({
+  beatsWithStatus,
+}: {
+  beatsWithStatus: { beat: Beat; effectiveStatus: BeatStatus }[]
+}) {
+  const total = beatsWithStatus.length
 
   const counts = useMemo(() => {
     const c = { done: 0, drafted: 0, untouched: 0, skipped: 0 }
-    for (const b of beats) c[b.status]++
+    for (const { effectiveStatus } of beatsWithStatus) c[effectiveStatus]++
     return c
-  }, [beats])
+  }, [beatsWithStatus])
 
   const draftedOrDone = counts.done + counts.drafted
 
@@ -185,19 +186,19 @@ function StructuralProgressBar({ beats }: { beats: Beat[] }) {
 // ─── Word count ───────────────────────────────────────────────────────────────
 
 function WordCountCard({
-  beats,
+  beatsWithStatus,
   targetWordCount,
 }: {
-  beats: Beat[]
+  beatsWithStatus: { beat: Beat; effectiveStatus: BeatStatus }[]
   targetWordCount?: number
 }) {
   const totalActual = useMemo(
-    () => beats.reduce((s, b) => s + (b.wordCountActual ?? 0), 0),
-    [beats],
+    () => beatsWithStatus.reduce((s, { beat }) => s + (beat.wordCountActual ?? 0), 0),
+    [beatsWithStatus],
   )
   const totalBeatTarget = useMemo(
-    () => beats.reduce((s, b) => s + (b.wordCountTarget ?? 0), 0),
-    [beats],
+    () => beatsWithStatus.reduce((s, { beat }) => s + (beat.wordCountTarget ?? 0), 0),
+    [beatsWithStatus],
   )
 
   const effectiveTarget = targetWordCount ?? totalBeatTarget
@@ -271,7 +272,6 @@ function ActivityHeatmap({
     [activityByDay],
   )
 
-  // 12-week grid: columns=weeks (oldest→newest), rows=Sun–Sat
   const weeks = useMemo(() => {
     const today = new Date()
     today.setHours(12, 0, 0, 0)
@@ -437,10 +437,10 @@ const STATUS_BADGE: Record<string, string> = {
 
 function BeatTable({
   projectId,
-  beats,
+  beatsWithStatus,
 }: {
   projectId: string
-  beats: Beat[]
+  beatsWithStatus: { beat: Beat; effectiveStatus: BeatStatus }[]
 }) {
   const [open, setOpen] = useState(true)
 
@@ -457,7 +457,7 @@ function BeatTable({
         )}
         <CardTitle>Beat breakdown</CardTitle>
         <span className="ml-auto text-sm font-normal text-muted-foreground">
-          {beats.length} beats
+          {beatsWithStatus.length} beats
         </span>
       </CardHeader>
       {open && (
@@ -481,14 +481,14 @@ function BeatTable({
                 </tr>
               </thead>
               <tbody>
-                {beats.map((beat) => (
+                {beatsWithStatus.map(({ beat, effectiveStatus }) => (
                   <tr
                     key={beat.id}
                     className="border-b transition-colors last:border-0 hover:bg-muted/50"
                   >
                     <td className="px-4 py-2">
                       <Link
-                        href={`/projects/${projectId}`}
+                        href={`/projects/${projectId}/beats/${beat.id}`}
                         className="underline-offset-2 hover:underline"
                       >
                         {beat.title}
@@ -499,9 +499,9 @@ function BeatTable({
                     </td>
                     <td className="px-4 py-2">
                       <span
-                        className={`inline-block rounded px-1.5 py-0.5 text-xs font-medium ${STATUS_BADGE[beat.status] ?? ""}`}
+                        className={`inline-block rounded px-1.5 py-0.5 text-xs font-medium ${STATUS_BADGE[effectiveStatus] ?? ""}`}
                       >
-                        {beat.status}
+                        {effectiveStatus}
                       </span>
                     </td>
                     <td className="px-4 py-2 text-right tabular-nums text-muted-foreground">
@@ -532,7 +532,7 @@ function BeatTable({
 
 export function ProgressClient({ projectId }: { projectId: string }) {
   const project = useLiveProject(projectId)
-  const beats = useLiveBeats(projectId)
+  const beatsWithStatus = useLiveBeatsWithStatus(projectId)
   const activityLog = useLiveActivityLog(projectId)
 
   return (
@@ -547,10 +547,10 @@ export function ProgressClient({ projectId }: { projectId: string }) {
         </Link>
       </div>
 
-      <StructuralProgressBar beats={beats} />
-      <WordCountCard beats={beats} targetWordCount={project?.targetWordCount} />
+      <StructuralProgressBar beatsWithStatus={beatsWithStatus} />
+      <WordCountCard beatsWithStatus={beatsWithStatus} targetWordCount={project?.targetWordCount} />
       <ActivityHeatmap projectId={projectId} activityLog={activityLog} />
-      <BeatTable projectId={projectId} beats={beats} />
+      <BeatTable projectId={projectId} beatsWithStatus={beatsWithStatus} />
     </div>
   )
 }

@@ -20,8 +20,8 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
-import { createPlace, deletePlace, updatePlace } from "@/lib/db-helpers";
-import type { Beat, Place } from "@/lib/db";
+import { createPlace, deletePlace, getEntityUsage, updatePlace } from "@/lib/db-helpers";
+import type { Beat, Place, Scene } from "@/lib/db";
 
 const KIND_OPTIONS = [
   "Room",
@@ -36,6 +36,7 @@ interface PlaceDrawerProps {
   place: Place | "new" | null;
   projectId: string;
   linkedBeats: Beat[];
+  linkedScenes: Scene[];
   onClose: () => void;
   onJumpToBeat: (beatId: string) => void;
 }
@@ -44,6 +45,7 @@ export function PlaceDrawer({
   place,
   projectId,
   linkedBeats,
+  linkedScenes,
   onClose,
   onJumpToBeat,
 }: PlaceDrawerProps) {
@@ -55,6 +57,7 @@ export function PlaceDrawer({
   const [description, setDescription] = useState("");
   const [notes, setNotes] = useState("");
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [usage, setUsage] = useState<{ beatCount: number; sceneCount: number } | null>(null);
 
   useEffect(() => {
     if (p) {
@@ -93,6 +96,13 @@ export function PlaceDrawer({
       notes,
     });
     onClose();
+  }
+
+  async function handleOpenDeleteConfirm() {
+    if (!p) return;
+    const u = await getEntityUsage(p.id, "place");
+    setUsage(u);
+    setConfirmDelete(true);
   }
 
   async function handleDelete() {
@@ -163,7 +173,7 @@ export function PlaceDrawer({
             {linkedBeats.length > 0 && (
               <div className="flex flex-col gap-2">
                 <Label className="text-xs text-muted-foreground">
-                  Appears in ({linkedBeats.length})
+                  Beats ({linkedBeats.length})
                 </Label>
                 <ul className="flex flex-col gap-1">
                   {linkedBeats.map((b) => (
@@ -188,6 +198,30 @@ export function PlaceDrawer({
                 </ul>
               </div>
             )}
+
+            {linkedScenes.length > 0 && (
+              <div className="flex flex-col gap-2">
+                <Label className="text-xs text-muted-foreground">
+                  Scenes ({linkedScenes.length})
+                </Label>
+                <ul className="flex flex-col gap-1">
+                  {linkedScenes.map((s) => (
+                    <li key={s.id}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onClose();
+                          onJumpToBeat(s.beatId);
+                        }}
+                        className="w-full rounded px-2 py-1 text-left text-sm text-foreground hover:bg-accent transition-colors"
+                      >
+                        {s.title}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
 
           <div className="border-t p-5 pt-4 flex items-center justify-between">
@@ -200,7 +234,7 @@ export function PlaceDrawer({
                 variant="ghost"
                 size="sm"
                 className="text-destructive hover:text-destructive"
-                onClick={() => setConfirmDelete(true)}
+                onClick={handleOpenDeleteConfirm}
               >
                 <Trash2 className="mr-1.5 h-3.5 w-3.5" />
                 Delete
@@ -213,11 +247,25 @@ export function PlaceDrawer({
       <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <DialogContent showCloseButton={false}>
           <DialogHeader>
-            <DialogTitle>Delete {p?.name}?</DialogTitle>
+            <DialogTitle>Delete &ldquo;{p?.name}&rdquo;?</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            This place will be removed from all beats.
-          </p>
+          {usage && (usage.beatCount > 0 || usage.sceneCount > 0) ? (
+            <p className="text-sm text-muted-foreground">
+              {p?.name} is currently tagged in{" "}
+              {usage.beatCount > 0 && (
+                <strong>{usage.beatCount} beat{usage.beatCount !== 1 ? "s" : ""}</strong>
+              )}
+              {usage.beatCount > 0 && usage.sceneCount > 0 && " and "}
+              {usage.sceneCount > 0 && (
+                <strong>{usage.sceneCount} scene{usage.sceneCount !== 1 ? "s" : ""}</strong>
+              )}
+              . Deleting will remove all of these tags. This can&rsquo;t be undone.
+            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              This place will be permanently removed. This can&rsquo;t be undone.
+            </p>
+          )}
           <DialogFooter>
             <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
             <Button variant="destructive" onClick={handleDelete}>

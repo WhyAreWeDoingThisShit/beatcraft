@@ -3,6 +3,7 @@ import Dexie, { type EntityTable } from "dexie";
 export type Format = "novel" | "screenplay" | "short-story" | "stage-play" | "tv-pilot";
 export type Methodology = "three-act" | "save-the-cat" | "heros-journey" | "freeform";
 export type BeatStatus = "untouched" | "drafted" | "done" | "skipped";
+export type SceneStatus = "untouched" | "drafted" | "done" | "skipped";
 
 export interface Project {
   id: string;
@@ -31,6 +32,20 @@ export interface Beat {
   linkedCharacterIds: string[];
   linkedPlaceIds: string[];
   isCustom: boolean;
+}
+
+export interface Scene {
+  id: string;
+  beatId: string;
+  projectId: string;
+  order: number;
+  title: string;
+  body: string;
+  status: SceneStatus;
+  linkedCharacterIds: string[];
+  linkedPlaceIds: string[];
+  createdAt: number;
+  updatedAt: number;
 }
 
 export interface Character {
@@ -67,6 +82,7 @@ export interface ActivityLog {
 class BeatcraftDB extends Dexie {
   projects!: EntityTable<Project, "id">;
   beats!: EntityTable<Beat, "id">;
+  scenes!: EntityTable<Scene, "id">;
   characters!: EntityTable<Character, "id">;
   places!: EntityTable<Place, "id">;
   activityLog!: EntityTable<ActivityLog, "id">;
@@ -79,6 +95,9 @@ class BeatcraftDB extends Dexie {
       characters: "&id, projectId",
       places: "&id, projectId",
       activityLog: "&id, &[projectId+day]",
+    });
+    this.version(2).stores({
+      scenes: "&id, beatId, projectId, [beatId+order], updatedAt",
     });
   }
 }

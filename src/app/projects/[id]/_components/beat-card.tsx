@@ -1,13 +1,15 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { GripVertical, X } from "lucide-react";
+import { GripVertical, MessageSquareText, X } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
 import { updateBeat, setBeatStatus } from "@/lib/db-helpers";
+import { useLiveBeatStatus, useLiveSceneCount } from "@/lib/use-live";
 import type { Beat, BeatStatus, Character, Place } from "@/lib/db";
+import { CastStrip } from "./cast-strip";
 
 const STATUS_NEXT: Record<BeatStatus, BeatStatus> = {
   untouched: "drafted",
@@ -25,18 +27,28 @@ const STATUS_LABEL: Record<BeatStatus, string> = {
 
 function StatusChip({
   status,
+  hasScenes,
   onClick,
 }: {
   status: BeatStatus;
+  hasScenes: boolean;
   onClick: (e: React.MouseEvent) => void;
 }) {
+  const clickProps = hasScenes
+    ? {
+        title: "Derived from scenes",
+        style: { cursor: "default" as const },
+        onClick: (e: React.MouseEvent) => e.stopPropagation(),
+      }
+    : { onClick };
+
   if (status === "skipped") {
     return (
       <button
         type="button"
-        onClick={onClick}
         aria-label="Skipped"
         className="inline-flex h-5 items-center px-1 transition-opacity hover:opacity-70"
+        {...clickProps}
       >
         <X className="h-3.5 w-3.5" style={{ color: "#7A2E2E" }} />
       </button>
@@ -46,13 +58,14 @@ function StatusChip({
   return (
     <button
       type="button"
-      onClick={onClick}
       className={cn(
         "inline-flex h-5 items-center rounded-full px-2 text-[10px] font-semibold transition-colors",
         status === "untouched" && "bg-[#5C4F42]/15 text-[#5C4F42]/70",
         status === "drafted" && "bg-[#8B6F47] text-[#F2E8D5]",
         status === "done" && "bg-[#52796F] text-[#F2E8D5]",
+        hasScenes && "cursor-default",
       )}
+      {...clickProps}
     >
       {STATUS_LABEL[status]}
     </button>
@@ -63,12 +76,24 @@ interface BeatCardProps {
   beat: Beat;
   characters: Character[];
   places: Place[];
+  projectId: string;
   onOpen: () => void;
 }
 
-function BeatCardInner({ beat, characters, places, onOpen, dragHandleProps }: BeatCardProps & { dragHandleProps: Record<string, unknown> }) {
+function BeatCardInner({
+  beat,
+  characters,
+  places,
+  projectId,
+  onOpen,
+  dragHandleProps,
+}: BeatCardProps & { dragHandleProps: Record<string, unknown> }) {
   const [title, setTitle] = useState(beat.title);
   const titleSaved = useRef(beat.title);
+
+  const effectiveStatus = useLiveBeatStatus(beat.id) ?? beat.status;
+  const sceneCount = useLiveSceneCount(beat.id);
+  const hasScenes = sceneCount > 0;
 
   // Sync title when beat changes from outside
   if (beat.title !== titleSaved.current && document.activeElement?.tagName !== "INPUT") {
@@ -88,18 +113,20 @@ function BeatCardInner({ beat, characters, places, onOpen, dragHandleProps }: Be
 
   function handleStatusClick(e: React.MouseEvent) {
     e.stopPropagation();
-    setBeatStatus(beat.id, STATUS_NEXT[beat.status]);
+    setBeatStatus(beat.id, STATUS_NEXT[effectiveStatus]);
   }
 
-  const linkedChars = characters.filter((c) => beat.linkedCharacterIds.includes(c.id));
-  const linkedPlaces = places.filter((p) => beat.linkedPlaceIds.includes(p.id));
-  const preview = beat.body.slice(0, 120);
   const hasWordTarget = beat.wordCountTarget !== undefined && beat.wordCountTarget > 0;
   const progress = hasWordTarget
     ? Math.min(100, Math.round(((beat.wordCountActual ?? 0) / beat.wordCountTarget!) * 100))
     : null;
 
-  const isSkipped = beat.status === "skipped";
+  const preview = beat.body.slice(0, 120);
+  const isSkipped = effectiveStatus === "skipped";
+
+  // Union cast: beat's own + scenes' when scenes exist (computed from props for beat card compact display)
+  // Note: for the board we show only beat's own links; the full union is on the beat detail page.
+  // Per spec section 2 table: beat card shows linked characters/places as two rows of icons.
 
   return (
     <div
@@ -129,15 +156,25 @@ function BeatCardInner({ beat, characters, places, onOpen, dragHandleProps }: Be
           className="flex-1 truncate bg-transparent font-medium text-foreground outline-none"
         />
 
-        <StatusChip status={beat.status} onClick={handleStatusClick} />
+        <div className="flex items-center gap-1.5">
+          {sceneCount > 0 && (
+            <span
+              className="inline-flex items-center gap-0.5 text-[10px] text-muted-foreground/60"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <MessageSquareText className="h-3 w-3" />
+              {sceneCount}
+            </span>
+          )}
+          <StatusChip
+            status={effectiveStatus}
+            hasScenes={hasScenes}
+            onClick={handleStatusClick}
+          />
+        </div>
       </div>
 
-      {progress !== null && (
-        <Progress
-          value={progress}
-          className="h-1"
-        />
-      )}
+      {progress !== null && <Progress value={progress} className="h-1" />}
 
       {preview && (
         <p className="line-clamp-2 text-xs leading-relaxed text-muted-foreground">
@@ -146,27 +183,13 @@ function BeatCardInner({ beat, characters, places, onOpen, dragHandleProps }: Be
         </p>
       )}
 
-      {(linkedChars.length > 0 || linkedPlaces.length > 0) && (
-        <div className="flex flex-wrap gap-1">
-          {linkedChars.map((c) => (
-            <span
-              key={c.id}
-              className="inline-flex h-4 items-center rounded-full px-1.5 text-[10px] font-medium text-white"
-              style={{ backgroundColor: c.color ?? "#6366f1" }}
-            >
-              {c.name}
-            </span>
-          ))}
-          {linkedPlaces.map((p) => (
-            <span
-              key={p.id}
-              className="inline-flex h-4 items-center rounded-full border border-border px-1.5 text-[10px] font-medium text-muted-foreground"
-            >
-              {p.name}
-            </span>
-          ))}
-        </div>
-      )}
+      <CastStrip
+        characters={characters}
+        places={places}
+        linkedCharacterIds={beat.linkedCharacterIds}
+        linkedPlaceIds={beat.linkedPlaceIds}
+        variant="compact"
+      />
     </div>
   );
 }

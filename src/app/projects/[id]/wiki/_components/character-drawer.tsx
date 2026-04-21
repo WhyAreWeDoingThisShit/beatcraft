@@ -22,8 +22,8 @@ import {
   DialogFooter,
   DialogClose,
 } from "@/components/ui/dialog";
-import { createCharacter, deleteCharacter, updateCharacter } from "@/lib/db-helpers";
-import type { Beat, Character } from "@/lib/db";
+import { createCharacter, deleteCharacter, getEntityUsage, updateCharacter } from "@/lib/db-helpers";
+import type { Beat, Character, Scene } from "@/lib/db";
 
 export const CHARACTER_COLORS = [
   { value: "#f43f5e", label: "Rose" },
@@ -60,6 +60,7 @@ interface CharacterDrawerProps {
   character: Character | "new" | null;
   projectId: string;
   linkedBeats: Beat[];
+  linkedScenes: Scene[];
   onClose: () => void;
   onJumpToBeat: (beatId: string) => void;
 }
@@ -68,6 +69,7 @@ export function CharacterDrawer({
   character,
   projectId,
   linkedBeats,
+  linkedScenes,
   onClose,
   onJumpToBeat,
 }: CharacterDrawerProps) {
@@ -82,6 +84,7 @@ export function CharacterDrawer({
   const [notes, setNotes] = useState("");
   const [color, setColor] = useState(CHARACTER_COLORS[5].value);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [usage, setUsage] = useState<{ beatCount: number; sceneCount: number } | null>(null);
 
   useEffect(() => {
     if (char) {
@@ -134,6 +137,13 @@ export function CharacterDrawer({
       color,
     });
     onClose();
+  }
+
+  async function handleOpenDeleteConfirm() {
+    if (!char) return;
+    const u = await getEntityUsage(char.id, "character");
+    setUsage(u);
+    setConfirmDelete(true);
   }
 
   async function handleDelete() {
@@ -267,7 +277,7 @@ export function CharacterDrawer({
             {linkedBeats.length > 0 && (
               <div className="flex flex-col gap-2">
                 <Label className="text-xs text-muted-foreground">
-                  Appears in ({linkedBeats.length})
+                  Beats ({linkedBeats.length})
                 </Label>
                 <ul className="flex flex-col gap-1">
                   {linkedBeats.map((b) => (
@@ -292,6 +302,30 @@ export function CharacterDrawer({
                 </ul>
               </div>
             )}
+
+            {linkedScenes.length > 0 && (
+              <div className="flex flex-col gap-2">
+                <Label className="text-xs text-muted-foreground">
+                  Scenes ({linkedScenes.length})
+                </Label>
+                <ul className="flex flex-col gap-1">
+                  {linkedScenes.map((s) => (
+                    <li key={s.id}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          onClose();
+                          onJumpToBeat(s.beatId);
+                        }}
+                        className="w-full rounded px-2 py-1 text-left text-sm text-foreground hover:bg-accent transition-colors"
+                      >
+                        {s.title}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
 
           <div className="border-t p-5 pt-4 flex items-center justify-between">
@@ -304,7 +338,7 @@ export function CharacterDrawer({
                 variant="ghost"
                 size="sm"
                 className="text-destructive hover:text-destructive"
-                onClick={() => setConfirmDelete(true)}
+                onClick={handleOpenDeleteConfirm}
               >
                 <Trash2 className="mr-1.5 h-3.5 w-3.5" />
                 Delete
@@ -317,11 +351,25 @@ export function CharacterDrawer({
       <Dialog open={confirmDelete} onOpenChange={setConfirmDelete}>
         <DialogContent showCloseButton={false}>
           <DialogHeader>
-            <DialogTitle>Delete {char?.name}?</DialogTitle>
+            <DialogTitle>Delete &ldquo;{char?.name}&rdquo;?</DialogTitle>
           </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            This character will be removed from all beats.
-          </p>
+          {usage && (usage.beatCount > 0 || usage.sceneCount > 0) ? (
+            <p className="text-sm text-muted-foreground">
+              {char?.name} is currently tagged in{" "}
+              {usage.beatCount > 0 && (
+                <strong>{usage.beatCount} beat{usage.beatCount !== 1 ? "s" : ""}</strong>
+              )}
+              {usage.beatCount > 0 && usage.sceneCount > 0 && " and "}
+              {usage.sceneCount > 0 && (
+                <strong>{usage.sceneCount} scene{usage.sceneCount !== 1 ? "s" : ""}</strong>
+              )}
+              . Deleting will remove all of these tags. This can&rsquo;t be undone.
+            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              This character will be permanently removed. This can&rsquo;t be undone.
+            </p>
+          )}
           <DialogFooter>
             <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
             <Button variant="destructive" onClick={handleDelete}>

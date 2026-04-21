@@ -1,9 +1,12 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { db } from "../db";
 import {
+  addCustomBeat,
   createProject,
-  listProjects,
+  createScene,
+  deleteBeat,
   listBeats,
+  listScenes,
   reorderBeat,
   upsertBeat,
 } from "../db-helpers";
@@ -22,6 +25,7 @@ describe("createProject + listProjects", () => {
       methodology: "save-the-cat",
     });
 
+    const { listProjects } = await import("../db-helpers");
     const projects = await listProjects();
     expect(projects).toHaveLength(1);
     expect(projects[0].id).toBe(id);
@@ -32,7 +36,6 @@ describe("createProject + listProjects", () => {
 
   it("lists projects sorted by updatedAt descending", async () => {
     const id1 = await createProject({ title: "First", format: "novel", methodology: "freeform" });
-    // Force a later timestamp
     await new Promise((r) => setTimeout(r, 5));
     const id2 = await createProject({
       title: "Second",
@@ -40,6 +43,7 @@ describe("createProject + listProjects", () => {
       methodology: "three-act",
     });
 
+    const { listProjects } = await import("../db-helpers");
     const projects = await listProjects();
     expect(projects[0].id).toBe(id2);
     expect(projects[1].id).toBe(id1);
@@ -48,7 +52,6 @@ describe("createProject + listProjects", () => {
 
 describe("fractional beat reordering", () => {
   it("inserting between order 1000 and 2000 with order 1500 appears in the right slot", async () => {
-    // Use freeform so createProject seeds no beats — giving us full control of order values
     const projectId = await createProject({
       title: "Order Test",
       format: "novel",
@@ -101,13 +104,35 @@ describe("fractional beat reordering", () => {
     await upsertBeat(make(2000));
     await upsertBeat(make(3000));
 
-    // Move beat at 3000 between 1000 and 2000 — caller computes midpoint 1500
     await reorderBeat("b3000", 1500);
 
     const beats = await listBeats(projectId);
     expect(beats.map((b) => b.order)).toEqual([1000, 1500, 2000]);
-    // Original order values on the other beats are untouched
     expect(beats.find((b) => b.id === "b1000")!.order).toBe(1000);
     expect(beats.find((b) => b.id === "b2000")!.order).toBe(2000);
+  });
+});
+
+describe("scene cascade delete", () => {
+  it("deleting a beat cascades to its scenes", async () => {
+    const projectId = await createProject({
+      title: "Scenes Test",
+      format: "novel",
+      methodology: "freeform",
+    });
+
+    const beatId = await addCustomBeat(projectId, undefined);
+
+    await createScene(beatId, { projectId, title: "Scene 1" });
+    await createScene(beatId, { projectId, title: "Scene 2" });
+    await createScene(beatId, { projectId, title: "Scene 3" });
+
+    const scenesBefore = await listScenes(beatId);
+    expect(scenesBefore).toHaveLength(3);
+
+    await deleteBeat(beatId);
+
+    const scenesAfter = await listScenes(beatId);
+    expect(scenesAfter).toHaveLength(0);
   });
 });
