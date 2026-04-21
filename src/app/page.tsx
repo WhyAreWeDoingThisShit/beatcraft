@@ -40,7 +40,7 @@ export default function HomePage() {
           choose a methodology, and start planning.
         </p>
       </div>
-      <Button size="lg" className="gap-2">
+      <Button size="lg" className="gap-2" onClick={() => router.push("/projects/new")}>
         <BookOpen className="h-5 w-5" />
         Start a new project
       </Button>
