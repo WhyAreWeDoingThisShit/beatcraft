@@ -1,13 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { BookOpen } from "lucide-react";
+import { BookOpen, Upload } from "lucide-react";
 
 export default function HomePage() {
   const router = useRouter();
   const [checking, setChecking] = useState(true);
+  const [importing, setImporting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     async function checkProjects() {
@@ -26,6 +29,23 @@ export default function HomePage() {
     checkProjects();
   }, [router]);
 
+  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    setImporting(true);
+    try {
+      const { importProject } = await import("@/lib/io");
+      const id = await importProject(file);
+      toast.success("Project imported.");
+      router.push(`/projects/${id}`);
+    } catch {
+      toast.error("Could not import file. Make sure it's a valid Bosanquet JSON export.");
+    } finally {
+      setImporting(false);
+    }
+  }
+
   if (checking) return null;
 
   return (
@@ -40,10 +60,30 @@ export default function HomePage() {
           choose a methodology, and start planning.
         </p>
       </div>
-      <Button size="lg" className="gap-2" onClick={() => router.push("/projects/new")}>
-        <BookOpen className="h-5 w-5" />
-        Start a new project
-      </Button>
+      <div className="flex items-center gap-3">
+        <Button size="lg" className="gap-2" onClick={() => router.push("/projects/new")}>
+          <BookOpen className="h-5 w-5" />
+          Start a new project
+        </Button>
+        <Button
+          size="lg"
+          variant="outline"
+          className="gap-2"
+          disabled={importing}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          <Upload className="h-5 w-5" />
+          {importing ? "Importing…" : "Import project"}
+        </Button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".json,application/json"
+          className="sr-only"
+          onChange={handleImport}
+          aria-label="Import project JSON file"
+        />
+      </div>
     </div>
   );
 }

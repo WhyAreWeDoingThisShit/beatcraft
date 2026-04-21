@@ -12,7 +12,7 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import { SortableContext, arrayMove, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { ChevronDown, ChevronRight, MoreHorizontal, Plus, BarChart2, Settings } from "lucide-react";
+import { ChevronDown, ChevronRight, MoreHorizontal, Plus, BarChart2, Settings, FileJson } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -45,6 +45,7 @@ import {
   reorderBeat,
   resetBeatsToScaffold,
 } from "@/lib/db-helpers";
+import { exportProject } from "@/lib/io";
 import type { Beat, Character, Place } from "@/lib/db";
 import { SortableBeatCard } from "./beat-card";
 
@@ -360,6 +361,21 @@ export function BeatBoard({ projectId }: { projectId: string }) {
     router.push(`/projects/${projectId}/beats/${beat.id}`);
   }
 
+  async function handleExportJSON() {
+    try {
+      const blob = await exportProject(projectId);
+      const slug = (project.title ?? "project").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "project";
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${slug}.bosanquet.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error("Export failed.");
+    }
+  }
+
   return (
     <div className="flex min-h-full flex-col">
       {/* Header */}
@@ -379,6 +395,15 @@ export function BeatBoard({ projectId }: { projectId: string }) {
           <BarChart2 className="h-3.5 w-3.5" aria-hidden />
           Progress
         </Link>
+
+        <button
+          onClick={handleExportJSON}
+          className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:border-border/80 hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label="Export project as JSON"
+        >
+          <FileJson className="h-3.5 w-3.5" aria-hidden />
+          Export
+        </button>
 
         <Link
           href={`/projects/${projectId}/settings`}
