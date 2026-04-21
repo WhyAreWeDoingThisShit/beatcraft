@@ -364,7 +364,7 @@ export function BeatBoard({ projectId }: { projectId: string }) {
   async function handleExportJSON() {
     try {
       const blob = await exportProject(projectId);
-      const slug = (project.title ?? "project").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "project";
+      const slug = (project?.title ?? "project").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "project";
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
