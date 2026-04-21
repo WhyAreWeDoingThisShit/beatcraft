@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xargs grep *)",
+      "Bash(npm run *)",
+      "Bash(pnpm build *)",
+      "Bash(vercel --version)",
+      "Bash(npx vercel *)"
+    ]
+  }
+}
