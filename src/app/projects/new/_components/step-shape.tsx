@@ -14,27 +14,27 @@ const METHODOLOGIES = [
     label: "3-Act Structure",
     icon: AlignLeft,
     description:
-      "The universal skeleton. Three movements: setup, confrontation, resolution. Good default if you're not sure.",
+      "The universal skeleton. Three movements: setup, confrontation, resolution. Good default if you're not sure. (e.g. The Lion King.)",
   },
   {
     value: "save-the-cat" as Methodology,
     label: "Save the Cat",
     icon: ListChecks,
     description:
-      "Blake Snyder's 15 beats. Precise, punchy, popular in screenwriting and commercial fiction.",
+      "Blake Snyder's 15 beats. Precise, punchy, popular in screenwriting and commercial fiction. (e.g. The Matrix.)",
   },
   {
     value: "heros-journey" as Methodology,
     label: "Hero's Journey",
     icon: Compass,
     description:
-      "Campbell/Vogler's 12 stages. Strong for mythic, transformational, or quest stories.",
+      "Campbell/Vogler's 12 stages. Strong for mythic, transformational, or quest stories. (e.g. The Hobbit.)",
   },
   {
     value: "freeform" as Methodology,
     label: "Freeform",
     icon: PenLine,
-    description: "No scaffold. Start empty and add beats as you go.",
+    description: "No scaffold. Start empty and add beats as you go. (Many literary and experimental works live here.)",
   },
 ] as const;
 

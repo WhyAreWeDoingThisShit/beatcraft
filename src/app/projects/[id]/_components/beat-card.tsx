@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { GripVertical } from "lucide-react";
+import { GripVertical, X } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
@@ -30,16 +30,28 @@ function StatusChip({
   status: BeatStatus;
   onClick: (e: React.MouseEvent) => void;
 }) {
+  if (status === "skipped") {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        aria-label="Skipped"
+        className="inline-flex h-5 items-center px-1 transition-opacity hover:opacity-70"
+      >
+        <X className="h-3.5 w-3.5" style={{ color: "#7A2E2E" }} />
+      </button>
+    );
+  }
+
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
         "inline-flex h-5 items-center rounded-full px-2 text-[10px] font-semibold transition-colors",
-        status === "untouched" && "border border-border bg-muted text-muted-foreground",
-        status === "drafted" && "border border-blue-500/30 bg-blue-500/10 text-blue-600 dark:text-blue-400",
-        status === "done" && "border border-green-500/30 bg-green-500/10 text-green-700 dark:text-green-400",
-        status === "skipped" && "border border-dashed border-border bg-transparent text-muted-foreground opacity-50",
+        status === "untouched" && "bg-[#5C4F42]/15 text-[#5C4F42]/70",
+        status === "drafted" && "bg-[#8B6F47] text-[#F2E8D5]",
+        status === "done" && "bg-[#52796F] text-[#F2E8D5]",
       )}
     >
       {STATUS_LABEL[status]}
@@ -95,7 +107,7 @@ function BeatCardInner({ beat, characters, places, onOpen, dragHandleProps }: Be
       aria-label={`Beat: ${beat.title}`}
       className={cn(
         "group relative flex cursor-pointer flex-col gap-2 rounded-lg border bg-card p-3 text-sm shadow-xs transition-colors hover:border-border/80 hover:shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1",
-        isSkipped && "opacity-50",
+        isSkipped && "opacity-70",
       )}
       onClick={onOpen}
     >

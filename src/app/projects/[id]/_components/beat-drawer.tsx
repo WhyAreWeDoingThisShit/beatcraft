@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Trash2 } from "lucide-react";
+import { Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -140,17 +140,30 @@ export function BeatDrawer({ beat, characters, places, onClose }: BeatDrawerProp
             <div className="flex items-center gap-4">
               <div className="flex flex-col gap-1.5">
                 <Label className="text-xs text-muted-foreground">Status</Label>
-                <select
-                  value={beat.status}
-                  onChange={(e) => handleStatusChange(e.target.value as BeatStatus)}
-                  className="h-8 rounded-lg border border-input bg-transparent px-2.5 text-sm text-foreground outline-none focus:border-ring focus:ring-3 focus:ring-ring/50"
-                >
-                  {STATUS_OPTIONS.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex flex-wrap gap-1.5">
+                  {STATUS_OPTIONS.map((o) => {
+                    const isActive = beat.status === o.value;
+                    return (
+                      <button
+                        key={o.value}
+                        type="button"
+                        aria-pressed={isActive}
+                        onClick={() => handleStatusChange(o.value)}
+                        className={cn(
+                          "inline-flex h-6 items-center gap-1 rounded-full px-2.5 text-xs font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                          !isActive && "bg-muted text-muted-foreground hover:opacity-80",
+                          o.value === "untouched" && isActive && "bg-[#5C4F42]/15 text-[#5C4F42]/80",
+                          o.value === "drafted" && isActive && "bg-[#8B6F47] text-[#F2E8D5]",
+                          o.value === "done" && isActive && "bg-[#52796F] text-[#F2E8D5]",
+                          o.value === "skipped" && isActive && "bg-transparent px-1 text-[#7A2E2E]",
+                        )}
+                      >
+                        {o.value === "skipped" && <X className="h-3 w-3" />}
+                        {o.label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               <div className="flex flex-col gap-1.5">

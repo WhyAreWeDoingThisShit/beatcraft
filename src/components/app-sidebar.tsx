@@ -76,7 +76,7 @@ function NavLink({
       <Icon className="h-4 w-4 shrink-0" aria-hidden />
       <span className="flex-1 truncate">{label}</span>
       {shortcut && (
-        <kbd className="rounded bg-muted/50 px-1 font-mono text-[9px] text-muted-foreground/50">
+        <kbd className="rounded bg-sidebar-accent/30 px-1 font-mono text-[9px] text-sidebar-foreground/40">
           {shortcut}
         </kbd>
       )}
@@ -123,7 +123,7 @@ export function AppSidebar() {
               href="/"
               className="flex items-center gap-2 overflow-hidden rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground text-sm font-bold">
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground text-sm font-serif font-black">
                 B
               </div>
               <span className="truncate font-semibold text-sidebar-foreground">Beatcraft</span>
@@ -145,7 +145,7 @@ export function AppSidebar() {
                 <Link
                   href="/"
                   aria-label="Beatcraft — go home"
-                  className="mx-auto flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground text-sm font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  className="mx-auto flex h-7 w-7 items-center justify-center rounded-lg bg-primary text-primary-foreground text-sm font-serif font-black focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 >
                   B
                 </Link>
@@ -165,7 +165,7 @@ export function AppSidebar() {
         {projectNavItems.length > 0 && (
           <div>
             {!collapsed && (
-              <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+              <p className="px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/50">
                 This project
               </p>
             )}
@@ -190,12 +190,12 @@ export function AppSidebar() {
         <div>
           {!collapsed && (
             <div className="flex items-center justify-between px-2 py-1">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/50">
                 Projects
               </p>
               <Link
                 href="/projects/new"
-                className="text-muted-foreground/70 hover:text-sidebar-foreground transition-colors rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="text-sidebar-foreground/50 hover:text-sidebar-foreground transition-colors rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 aria-label="New project"
               >
                 <Plus className="h-3.5 w-3.5" />
@@ -236,7 +236,7 @@ export function AppSidebar() {
                                 "flex h-8 w-8 mx-auto items-center justify-center rounded-md text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                                 active
                                   ? "bg-sidebar-primary text-sidebar-primary-foreground"
-                                  : "bg-muted text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+                                  : "bg-sidebar-accent/30 text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
                               )}
                             >
                               {initials}

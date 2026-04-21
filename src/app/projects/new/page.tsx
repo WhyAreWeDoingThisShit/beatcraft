@@ -188,7 +188,7 @@ export default function NewProjectPage() {
 
   return (
     <div className="flex min-h-full items-start justify-center p-6 pt-12">
-      <div className="w-full max-w-2xl">
+      <div className="w-full max-w-3xl">
         <StepIndicator step={step} />
 
         <FormProvider {...form}>
