@@ -5,6 +5,8 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
 import { AppSidebar } from "@/components/app-sidebar";
+import { ShortcutsProvider } from "@/components/shortcuts-provider";
+import { OfflineBanner, PWAUpdateWatcher } from "@/components/pwa-ui";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -49,7 +51,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning
     >
-      <body className="flex h-full overflow-hidden">
+      <body className="flex h-full flex-col overflow-hidden">
         <ThemeProvider
           attribute="class"
           defaultTheme="dark"
@@ -57,9 +59,17 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <TooltipProvider>
-            <AppSidebar />
-            <main className="flex-1 overflow-y-auto">{children}</main>
-            <Toaster richColors />
+            <ShortcutsProvider>
+              <OfflineBanner />
+              <div className="flex flex-1 overflow-hidden">
+                <AppSidebar />
+                <main id="main-content" className="flex-1 overflow-y-auto" tabIndex={-1}>
+                  {children}
+                </main>
+              </div>
+              <Toaster richColors />
+              <PWAUpdateWatcher />
+            </ShortcutsProvider>
           </TooltipProvider>
         </ThemeProvider>
       </body>

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import {
   DndContext,
@@ -11,7 +12,7 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import { SortableContext, arrayMove, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { ChevronDown, ChevronRight, MoreHorizontal, Plus, BookOpen } from "lucide-react";
+import { ChevronDown, ChevronRight, MoreHorizontal, Plus, BarChart2, Settings } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -44,7 +45,11 @@ import {
 } from "@/lib/db-helpers";
 import type { Beat, Character, Place } from "@/lib/db";
 import { SortableBeatCard } from "./beat-card";
-import { BeatDrawer } from "./beat-drawer";
+
+const BeatDrawer = dynamic(
+  () => import("./beat-drawer").then((m) => ({ default: m.BeatDrawer })),
+  { ssr: false },
+);
 
 const METHODOLOGY_LABEL: Record<string, string> = {
   "three-act": "3-Act Structure",
@@ -76,18 +81,22 @@ function ActGroup({
   onOpenBeat: (beat: Beat) => void;
   onAddBeat: () => void;
 }) {
+  const headingId = `act-${act.replace(/\s+/g, "-").toLowerCase()}`;
+
   return (
-    <div className="mb-4">
+    <div className="mb-4" role="region" aria-labelledby={headingId}>
       <div className="mb-2 flex items-center gap-2">
         <button
           type="button"
+          id={headingId}
           onClick={onToggle}
+          aria-expanded={!collapsed}
           className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors"
         >
           {collapsed ? (
-            <ChevronRight className="h-3.5 w-3.5" />
+            <ChevronRight className="h-3.5 w-3.5" aria-hidden />
           ) : (
-            <ChevronDown className="h-3.5 w-3.5" />
+            <ChevronDown className="h-3.5 w-3.5" aria-hidden />
           )}
           {act}
           <span className="ml-0.5 font-normal normal-case tracking-normal">
@@ -99,15 +108,15 @@ function ActGroup({
           type="button"
           onClick={onAddBeat}
           className="flex items-center gap-1 rounded px-1.5 py-0.5 text-xs text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
-          title="Add beat"
+          aria-label={`Add beat to ${act}`}
         >
-          <Plus className="h-3 w-3" />
+          <Plus className="h-3 w-3" aria-hidden />
           Add
         </button>
       </div>
 
       {!collapsed && (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2" role="list" aria-label={`${act} beats`}>
           {beats.map((beat) => (
             <SortableBeatCard
               key={beat.id}
@@ -119,7 +128,14 @@ function ActGroup({
           ))}
           {beats.length === 0 && (
             <div className="rounded-lg border border-dashed border-border p-4 text-center text-sm text-muted-foreground">
-              No beats yet.
+              No beats in this act yet.{" "}
+              <button
+                type="button"
+                onClick={onAddBeat}
+                className="text-primary underline-offset-2 hover:underline"
+              >
+                Add one
+              </button>
             </div>
           )}
         </div>
@@ -131,8 +147,6 @@ function ActGroup({
 // ---------------------------------------------------------------------------
 // Reset dialog
 // ---------------------------------------------------------------------------
-
-type ResetMode = "discard" | "keep" | null;
 
 function ResetDialog({
   open,
@@ -150,15 +164,14 @@ function ResetDialog({
           <DialogTitle>Reset beats to scaffold?</DialogTitle>
         </DialogHeader>
         <p className="text-sm text-muted-foreground">
-          This will replace the scaffold beats with fresh ones. Your custom beats can be
-          kept or removed.
+          Scaffold beats will be replaced with fresh ones. Your custom beats can be kept or removed.
         </p>
         <DialogFooter className="flex-col gap-2 sm:flex-col">
           <Button variant="destructive" onClick={() => onConfirm("discard")}>
-            Discard everything & reset
+            Discard everything &amp; reset
           </Button>
           <Button variant="outline" onClick={() => onConfirm("keep")}>
-            Keep my custom beats, reset scaffold
+            Keep custom beats, reset scaffold
           </Button>
           <DialogClose render={<Button variant="ghost" />}>Cancel</DialogClose>
         </DialogFooter>
@@ -187,8 +200,7 @@ function DetachDialog({
           <DialogTitle>Detach from methodology?</DialogTitle>
         </DialogHeader>
         <p className="text-sm text-muted-foreground">
-          Your project will switch to Freeform. All existing beats are kept but act
-          groupings are removed.
+          Your project will switch to Freeform. All existing beats are kept but act groupings are removed.
         </p>
         <DialogFooter>
           <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
@@ -218,6 +230,22 @@ export function BeatBoard({ projectId }: { projectId: string }) {
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
   );
 
+  // `n` shortcut — add a new beat
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const target = e.target as HTMLElement;
+      const inField = target.matches("input, textarea, select, [contenteditable]");
+      if (inField || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === "n") {
+        e.preventDefault();
+        handleAddBeat(undefined);
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   if (!project) {
     return (
       <div className="flex min-h-full items-center justify-center p-8">
@@ -228,7 +256,6 @@ export function BeatBoard({ projectId }: { projectId: string }) {
 
   const isFreeform = project.methodology === "freeform";
 
-  // Group beats by act preserving order
   const groups: { act: string; beats: Beat[] }[] = [];
   for (const beat of beats) {
     const actLabel = beat.act ?? "Beats";
@@ -280,17 +307,15 @@ export function BeatBoard({ projectId }: { projectId: string }) {
   async function handleDetach() {
     setShowDetach(false);
     await detachFromMethodology(projectId);
-    toast.success("Detached from methodology — project is now Freeform.");
+    toast.success("Detached — project is now Freeform.");
   }
 
   async function handleAddBeat(act: string | undefined) {
     const id = await addCustomBeat(projectId, act);
-    // open the new beat
     const newBeat = beats.find((b) => b.id === id);
     if (newBeat) setOpenBeat(newBeat);
   }
 
-  // Sync open beat with live data so edits reflect in the drawer
   const liveBeat = openBeat ? (beats.find((b) => b.id === openBeat.id) ?? null) : null;
 
   return (
@@ -305,16 +330,26 @@ export function BeatBoard({ projectId }: { projectId: string }) {
         </div>
 
         <Link
-          href={`/projects/${projectId}/wiki`}
-          className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:border-border/80 hover:text-foreground transition-colors"
+          href={`/projects/${projectId}/progress`}
+          className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:border-border/80 hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label="View progress"
         >
-          <BookOpen className="h-3.5 w-3.5" />
-          Wiki
+          <BarChart2 className="h-3.5 w-3.5" aria-hidden />
+          Progress
+        </Link>
+
+        <Link
+          href={`/projects/${projectId}/settings`}
+          className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:border-border/80 hover:text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-label="Project settings"
+        >
+          <Settings className="h-3.5 w-3.5" aria-hidden />
+          Settings
         </Link>
 
         <DropdownMenu>
-          <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8" />}>
-            <MoreHorizontal className="h-4 w-4" />
+          <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8" aria-label="More options" />}>
+            <MoreHorizontal className="h-4 w-4" aria-hidden />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             {!isFreeform && (
@@ -329,7 +364,7 @@ export function BeatBoard({ projectId }: { projectId: string }) {
               </>
             )}
             <DropdownMenuItem onClick={() => handleAddBeat(undefined)}>
-              Add beat
+              Add beat <kbd className="ml-auto text-[10px] text-muted-foreground">N</kbd>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -347,24 +382,38 @@ export function BeatBoard({ projectId }: { projectId: string }) {
             strategy={verticalListSortingStrategy}
           >
             {isFreeform ? (
-              <div className="flex flex-col gap-2">
-                {beats.map((beat) => (
-                  <SortableBeatCard
-                    key={beat.id}
-                    beat={beat}
-                    characters={characters}
-                    places={places}
-                    onOpen={() => setOpenBeat(beat)}
-                  />
-                ))}
-                <button
-                  type="button"
-                  onClick={() => handleAddBeat(undefined)}
-                  className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-border py-3 text-sm text-muted-foreground hover:border-primary/50 hover:text-foreground transition-colors"
-                >
-                  <Plus className="h-4 w-4" />
-                  Add beat
-                </button>
+              <div className="flex flex-col gap-2" role="list" aria-label="Beats">
+                {beats.length === 0 ? (
+                  <div className="flex flex-col items-center gap-4 py-20 text-center">
+                    <p className="text-muted-foreground">No beats yet. Add one to get started.</p>
+                    <Button onClick={() => handleAddBeat(undefined)} className="gap-2">
+                      <Plus className="h-4 w-4" />
+                      Add first beat
+                      <kbd className="ml-1 rounded bg-primary-foreground/10 px-1 font-mono text-[10px]">N</kbd>
+                    </Button>
+                  </div>
+                ) : (
+                  <>
+                    {beats.map((beat) => (
+                      <SortableBeatCard
+                        key={beat.id}
+                        beat={beat}
+                        characters={characters}
+                        places={places}
+                        onOpen={() => setOpenBeat(beat)}
+                      />
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => handleAddBeat(undefined)}
+                      className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-border py-3 text-sm text-muted-foreground hover:border-primary/50 hover:text-foreground transition-colors"
+                      aria-label="Add beat"
+                    >
+                      <Plus className="h-4 w-4" />
+                      Add beat
+                    </button>
+                  </>
+                )}
               </div>
             ) : (
               <div>
@@ -382,7 +431,7 @@ export function BeatBoard({ projectId }: { projectId: string }) {
                   />
                 ))}
                 {groups.length === 0 && (
-                  <div className="flex flex-col items-center gap-3 py-16 text-center">
+                  <div className="flex flex-col items-center gap-4 py-20 text-center">
                     <p className="text-muted-foreground">No beats yet.</p>
                     <Button variant="outline" size="sm" onClick={() => handleAddBeat(undefined)}>
                       Add first beat

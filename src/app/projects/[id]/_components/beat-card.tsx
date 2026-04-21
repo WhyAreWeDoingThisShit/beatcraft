@@ -91,8 +91,10 @@ function BeatCardInner({ beat, characters, places, onOpen, dragHandleProps }: Be
 
   return (
     <div
+      role="article"
+      aria-label={`Beat: ${beat.title}`}
       className={cn(
-        "group relative flex cursor-pointer flex-col gap-2 rounded-lg border bg-card p-3 text-sm shadow-xs transition-colors hover:border-border/80 hover:shadow-sm",
+        "group relative flex cursor-pointer flex-col gap-2 rounded-lg border bg-card p-3 text-sm shadow-xs transition-colors hover:border-border/80 hover:shadow-sm focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-1",
         isSkipped && "opacity-50",
       )}
       onClick={onOpen}

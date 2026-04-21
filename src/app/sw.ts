@@ -11,7 +11,7 @@ declare const self: ServiceWorkerGlobalScope;
 
 const serwist = new Serwist({
   precacheEntries: self.__SW_MANIFEST,
-  skipWaiting: true,
+  skipWaiting: false,
   clientsClaim: true,
   navigationPreload: true,
   offlineAnalyticsConfig: false,
@@ -28,3 +28,12 @@ const serwist = new Serwist({
 });
 
 serwist.addEventListeners();
+
+// Allow the client to trigger an update when ready
+(self as unknown as EventTarget).addEventListener("message", (event: Event) => {
+  const msg = event as MessageEvent;
+  if (msg.data?.type === "SKIP_WAITING") {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (self as unknown as any).skipWaiting();
+  }
+});

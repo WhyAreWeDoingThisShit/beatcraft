@@ -59,6 +59,63 @@ function scaffoldToBeats(
 // Projects
 // ---------------------------------------------------------------------------
 
+export async function updateProject(
+  id: string,
+  changes: Partial<Omit<Project, "id" | "createdAt">>,
+): Promise<void> {
+  await db.projects.update(id, { ...changes, updatedAt: Date.now() });
+}
+
+export async function eraseAllData(): Promise<void> {
+  await db.transaction(
+    "rw",
+    [db.projects, db.beats, db.characters, db.places, db.activityLog],
+    async () => {
+      await Promise.all([
+        db.projects.clear(),
+        db.beats.clear(),
+        db.characters.clear(),
+        db.places.clear(),
+        db.activityLog.clear(),
+      ]);
+    },
+  );
+}
+
+export async function changeMethodology(
+  projectId: string,
+  methodology: Methodology,
+  keepCustoms: boolean,
+): Promise<void> {
+  const project = await db.projects.get(projectId);
+  if (!project) return;
+
+  await db.transaction("rw", [db.projects, db.beats], async () => {
+    const existing = await beatRange(projectId).toArray();
+    const customs = existing.filter((b) => b.isCustom);
+
+    if (keepCustoms) {
+      await db.beats.bulkDelete(existing.filter((b) => !b.isCustom).map((b) => b.id));
+    } else {
+      await beatRange(projectId).delete();
+    }
+
+    const newBeats = scaffoldToBeats(projectId, methodology, project.targetWordCount);
+    if (newBeats.length) await db.beats.bulkAdd(newBeats);
+
+    if (keepCustoms && customs.length) {
+      const baseOrder = newBeats.length * 1000;
+      await Promise.all(
+        customs.map((b, i) =>
+          db.beats.update(b.id, { order: baseOrder + (i + 1) * 1000, act: undefined }),
+        ),
+      );
+    }
+
+    await db.projects.update(projectId, { methodology, updatedAt: Date.now() });
+  });
+}
+
 export async function createProject(input: CreateProjectInput): Promise<string> {
   const now = Date.now();
   const id = nanoid();
