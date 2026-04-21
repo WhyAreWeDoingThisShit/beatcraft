@@ -2,7 +2,8 @@ import Dexie from "dexie";
 import { nanoid } from "nanoid";
 import { format as formatDate } from "date-fns";
 import { db } from "./db";
-import type { Beat, BeatStatus, Character, Place, Project } from "./db";
+import type { Beat, BeatStatus, Character, Methodology, Place, Project } from "./db";
+import { BEAT_SCAFFOLDS } from "./scaffolds";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -28,6 +29,32 @@ function activityRange(projectId: string) {
     .between([projectId, Dexie.minKey], [projectId, Dexie.maxKey], true, true);
 }
 
+function scaffoldToBeats(
+  projectId: string,
+  methodology: Methodology,
+  targetWordCount?: number,
+  startOrder = 1000,
+): Beat[] {
+  const scaffold = BEAT_SCAFFOLDS[methodology];
+  return scaffold.map((s, i) => ({
+    id: nanoid(),
+    projectId,
+    order: startOrder + i * 1000,
+    act: s.act,
+    title: s.title,
+    prompt: s.prompt,
+    body: "",
+    status: "untouched" as BeatStatus,
+    wordCountTarget:
+      s.wordCountTargetFraction !== undefined && targetWordCount !== undefined
+        ? Math.round(s.wordCountTargetFraction * targetWordCount)
+        : undefined,
+    linkedCharacterIds: [],
+    linkedPlaceIds: [],
+    isCustom: false,
+  }));
+}
+
 // ---------------------------------------------------------------------------
 // Projects
 // ---------------------------------------------------------------------------
@@ -37,8 +64,7 @@ export async function createProject(input: CreateProjectInput): Promise<string> 
   const id = nanoid();
   const project: Project = { ...input, id, createdAt: now, updatedAt: now };
 
-  // Beat scaffolding — Window 4 fills in methodology-specific content
-  const beats: Beat[] = [];
+  const beats = scaffoldToBeats(id, input.methodology, input.targetWordCount);
 
   await db.transaction("rw", [db.projects, db.beats], async () => {
     await db.projects.add(project);
@@ -84,6 +110,13 @@ export async function upsertBeat(beat: Beat): Promise<void> {
   await db.beats.put(beat);
 }
 
+export async function updateBeat(
+  id: string,
+  changes: Partial<Omit<Beat, "id">>,
+): Promise<void> {
+  await db.beats.update(id, changes);
+}
+
 export async function deleteBeat(id: string): Promise<void> {
   await db.beats.delete(id);
 }
@@ -95,6 +128,75 @@ export async function setBeatStatus(beatId: string, status: BeatStatus): Promise
 /** Caller computes the midpoint between neighbors; no resequencing needed. */
 export async function reorderBeat(beatId: string, newOrder: number): Promise<void> {
   await db.beats.update(beatId, { order: newOrder });
+}
+
+export async function addCustomBeat(
+  projectId: string,
+  act: string | undefined,
+): Promise<string> {
+  const existing = await beatRange(projectId).toArray();
+  const actBeats = existing.filter((b) => b.act === act);
+  const maxOrder =
+    actBeats.length > 0 ? Math.max(...actBeats.map((b) => b.order)) : 0;
+
+  const id = nanoid();
+  await db.beats.add({
+    id,
+    projectId,
+    order: maxOrder + 1000,
+    act,
+    title: "New beat",
+    prompt: "",
+    body: "",
+    status: "untouched",
+    linkedCharacterIds: [],
+    linkedPlaceIds: [],
+    isCustom: true,
+  });
+  return id;
+}
+
+export async function resetBeatsToScaffold(
+  projectId: string,
+  methodology: Methodology,
+  keepCustoms: boolean,
+): Promise<void> {
+  const project = await db.projects.get(projectId);
+  if (!project) return;
+
+  await db.transaction("rw", [db.projects, db.beats], async () => {
+    const existing = await beatRange(projectId).toArray();
+    const customs = existing.filter((b) => b.isCustom);
+
+    if (keepCustoms) {
+      const nonCustomIds = existing.filter((b) => !b.isCustom).map((b) => b.id);
+      await db.beats.bulkDelete(nonCustomIds);
+    } else {
+      await beatRange(projectId).delete();
+    }
+
+    const newBeats = scaffoldToBeats(projectId, methodology, project.targetWordCount);
+    await db.beats.bulkAdd(newBeats);
+
+    if (keepCustoms && customs.length > 0) {
+      const baseOrder = newBeats.length * 1000;
+      await Promise.all(
+        customs.map((b, i) =>
+          db.beats.update(b.id, { order: baseOrder + (i + 1) * 1000, act: undefined }),
+        ),
+      );
+    }
+
+    await db.projects.update(projectId, { updatedAt: Date.now() });
+  });
+}
+
+export async function detachFromMethodology(projectId: string): Promise<void> {
+  await db.transaction("rw", [db.projects, db.beats], async () => {
+    await db.projects.update(projectId, { methodology: "freeform", updatedAt: Date.now() });
+    const beats = await beatRange(projectId).toArray();
+    await Promise.all(beats.map((b) => db.beats.update(b.id, { act: undefined })));
+  });
 }
 
 // ---------------------------------------------------------------------------

@@ -11,7 +11,7 @@ import type { Beat } from "../db";
 
 beforeEach(async () => {
   await db.delete();
-  // Dexie re-opens automatically on first operation
+  await db.open();
 });
 
 describe("createProject + listProjects", () => {
@@ -48,10 +48,11 @@ describe("createProject + listProjects", () => {
 
 describe("fractional beat reordering", () => {
   it("inserting between order 1000 and 2000 with order 1500 appears in the right slot", async () => {
+    // Use freeform so createProject seeds no beats — giving us full control of order values
     const projectId = await createProject({
       title: "Order Test",
       format: "novel",
-      methodology: "three-act",
+      methodology: "freeform",
     });
 
     const makeBeat = (order: number, title: string): Beat => ({
