@@ -1,12 +1,11 @@
 "use client";
 
-import { useRef, useState } from "react";
 import { GripVertical, MessageSquareText, X } from "lucide-react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { cn } from "@/lib/utils";
 import { Progress } from "@/components/ui/progress";
-import { updateBeat, setBeatStatus } from "@/lib/db-helpers";
+import { setBeatStatus } from "@/lib/db-helpers";
 import { useLiveBeatStatus, useLiveSceneCount } from "@/lib/use-live";
 import type { Beat, BeatStatus, Character, Place } from "@/lib/db";
 import { CastStrip } from "./cast-strip";
@@ -88,28 +87,9 @@ function BeatCardInner({
   onOpen,
   dragHandleProps,
 }: BeatCardProps & { dragHandleProps: Record<string, unknown> }) {
-  const [title, setTitle] = useState(beat.title);
-  const titleSaved = useRef(beat.title);
-
   const effectiveStatus = useLiveBeatStatus(beat.id) ?? beat.status;
   const sceneCount = useLiveSceneCount(beat.id);
   const hasScenes = sceneCount > 0;
-
-  // Sync title when beat changes from outside
-  if (beat.title !== titleSaved.current && document.activeElement?.tagName !== "INPUT") {
-    setTitle(beat.title);
-    titleSaved.current = beat.title;
-  }
-
-  function handleTitleBlur() {
-    const trimmed = title.trim();
-    if (trimmed && trimmed !== beat.title) {
-      updateBeat(beat.id, { title: trimmed });
-      titleSaved.current = trimmed;
-    } else {
-      setTitle(beat.title);
-    }
-  }
 
   function handleStatusClick(e: React.MouseEvent) {
     e.stopPropagation();
@@ -148,13 +128,9 @@ function BeatCardInner({
           <GripVertical className="h-4 w-4" />
         </button>
 
-        <input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          onBlur={handleTitleBlur}
-          onClick={(e) => e.stopPropagation()}
-          className="flex-1 truncate bg-transparent font-medium text-foreground outline-none"
-        />
+        <span className="flex-1 truncate font-medium text-foreground">
+          {beat.title}
+        </span>
 
         <div className="flex items-center gap-1.5">
           {sceneCount > 0 && (
