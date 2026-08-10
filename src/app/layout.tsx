@@ -7,6 +7,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ShortcutsProvider } from "@/components/shortcuts-provider";
 import { OfflineBanner, PWAUpdateWatcher } from "@/components/pwa-ui";
+import { Analytics } from "@vercel/analytics/next";
 
 const ibmPlexSans = IBM_Plex_Sans({
   variable: "--font-sans",
@@ -80,6 +81,7 @@ export default function RootLayout({
             </ShortcutsProvider>
           </TooltipProvider>
         </ThemeProvider>
+        <Analytics />
       </body>
     </html>
   );
